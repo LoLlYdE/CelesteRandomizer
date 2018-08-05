@@ -13,6 +13,10 @@ namespace Celeste.Mod.CelesteRandomizer {
 
         private List<LevelData> listOfLevels;
 
+        private int counter = 0;
+
+        private Vector2 lastPos = Vector2.Zero;
+
         public override Type SettingsType => typeof(RandomizerModuleSettings);
 
         public static RandomizerModuleSettings Settings => (RandomizerModuleSettings)Instance._Settings;
@@ -36,17 +40,46 @@ namespace Celeste.Mod.CelesteRandomizer {
                 orig(self, next, direction);
             }
             else {
-                LevelData nextRandom = listOfLevels[0];
-                Logger.Log("Randomizer", "# levels left: " + listOfLevels.Count());
-                listOfLevels.Remove(nextRandom);
-                setPlayerPos(self.Entities.FindFirst<Player>(), nextRandom.Spawns[0]);
+                Player ply = self.Entities.FindFirst<Player>();
 
+                bool eligible = (computeDistance(lastPos, ply.Position) > 20 || self.Session.LevelData.Spawns.Count == 1 || (++counter > 300));
+                if (lastPos == Vector2.Zero)
+                    eligible = true;
 
-
-                orig(self, nextRandom, direction);
+                if (!eligible) {
+                    setPlayerPos(ply, lastPos);
+                } else {
+                    counter = 0;
+                    LevelData nextRandom = listOfLevels[0];
+                    listOfLevels.Remove(nextRandom);
+                    Vector2 nearestSpawn = findNearestSpawn(nextRandom.Spawns, ply.Position);
+                    setPlayerPos(ply, nearestSpawn);
+                    lastPos = nearestSpawn;
+                    orig(self, nextRandom, direction);
+                }
             }
 
         }
+
+        private Vector2 findNearestSpawn(List<Vector2> spawns, Vector2 playerPos) {
+            Vector2 toReturn = spawns[0];
+            float distance = computeDistance(toReturn, playerPos);
+
+            foreach (Vector2 item in spawns) {
+                float newDist = computeDistance(playerPos, item);
+                if(newDist < distance) {
+                    distance = newDist;
+                    toReturn = item;
+                }
+            }
+            return toReturn;
+        }
+
+        private float computeDistance(Vector2 pos1, Vector2 pos2) {
+            //sqrt((x1-x2)^2 + (y1-y2)^2)
+            return (float) (Math.Sqrt(Math.Pow(pos1.X - pos2.X, 2) + Math.Pow(pos1.Y - pos2.Y, 2)));
+        }
+
 
         private void setPlayerPos(Player player, Vector2 pos) {
             player.Speed = Vector2.Zero;
@@ -89,8 +122,6 @@ namespace Celeste.Mod.CelesteRandomizer {
             Random rng = new Random();
             while (levels.Count != 0) {
                 int next = rng.Next(levels.Count);
-                Logger.Log("Randomizer", "Next: " + next);
-                Logger.Log("Randomizer", "Total: " + levels.Count());
                 toReturn.Add(levels[next]);
                 levels.RemoveAt(next);
             }
