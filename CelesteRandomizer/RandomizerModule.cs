@@ -75,10 +75,13 @@ namespace Celeste.Mod.CelesteRandomizer {
             List<LevelData> toReturn = new List<LevelData>();
             LevelData last = null;
 
+            bool found = false;
+
             foreach (LevelData item in levels) {
                 if (item.Name.ToLower().EndsWith("_end")) {
                     last = item;
                     levels.Remove(item);
+                    found = true;
                     break;
                 }
             }
@@ -92,7 +95,7 @@ namespace Celeste.Mod.CelesteRandomizer {
                 levels.RemoveAt(next);
             }
 
-            toReturn.Add(last);
+            if(found) toReturn.Add(last);
 
             return toReturn;
         }
